@@ -1,0 +1,18 @@
+__pycache__/
+active/
+.env
+.DS_Store
+.python-version
+ding.wav
+labelImg-1.8.6 (1).tar.gz
+labelImg-1.8.6/
+last.pt
+mobilenet_ssd.caffemodel
+mobilenet_ssd.prototxt
+model
+old.py
+serverold.py
+yolov5
+ssh-remote+172.20.10.3: 2.inetloc
+ssh-remote+172.20.10.3:.inetloc
+pictureCheck.py
