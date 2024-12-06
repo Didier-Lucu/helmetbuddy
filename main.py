@@ -15,6 +15,8 @@ import asyncio
 import websockets
 from flask import Flask, Response
 import cv2
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 from customtypes import *
  
@@ -24,6 +26,7 @@ websocket_thread = None
 ding_sound = None
 client = None
 engine = None
+lastTime = None
 
 r = sr.Recognizer()
 content = {
@@ -43,6 +46,9 @@ Helmet Buddy is a smart helmet interface for bikers. It will enable or disable s
 '''
 }
 def startup():
+    global lastTime
+
+    lastTime = time.time()
 
     load_dotenv()
 
@@ -55,8 +61,20 @@ def startup():
 
 def init_voice_engine():
     global r
+    # Allows for auto fluxution of enery_threshold
+    # ie changes what level of volume of speech is detected
+    # Used to filter out backround noise
     r.dynamic_energy_threshold = True 
     r.energy_threshold = 500
+    # Pause in speech in seconds to signify end of message
+    r.pause_threshold = 0.8
+
+    '''
+    Possible add-ons:
+    .record
+    .adjust_for_ambient_noise(source: AudioSource, duration: float = 1) # Maybe run every minute for a few seconds
+
+    '''
 
 def init_LLM():
 
@@ -287,16 +305,33 @@ def smartChat(rest):
     engine.runAndWait()
     return 
 
+def voiceCalibrate(source):
+
+    global r
+
+    r.adjust_for_ambient_noise(source, 1)
+    return
+
 def menu_triggered(source):
-    print("SPOT1")
+
     global objclass
+    global lastTime
     engine.say("Main Menu")
     engine.runAndWait()
+
     while True:
-        audio = r.listen(source)
-        text = r.recognize_google(audio, language="en-US")
-        if "hey buddy" in text.lower():
-            try:
+
+        if (lastTime - time.time() >= 180):
+            voiceCalibrate(source)
+        try:
+            audio = r.listen(source)
+            text = r.recognize_google(audio, language="en-US")
+            # text2 = r.recognize_whisper(audio)
+
+            # print("text: " + text)
+
+            if "hey buddy" in text.lower():
+            
                 play_ding_sound()
                 audio = r.listen(source)
                 text = r.recognize_google(audio, language="en-US")
@@ -337,8 +372,9 @@ def menu_triggered(source):
                     break
                 elif first_word == "objdetect":
                     pass
-            except sr.UnknownValueError:
-                pass
+        except sr.UnknownValueError or sr.WaitTimeoutError:
+            print("ERROR")
+            continue
     
     websocket_thread.join()
 
