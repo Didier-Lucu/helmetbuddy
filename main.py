@@ -16,6 +16,8 @@ import websockets
 from flask import Flask, Response
 import cv2
 import ssl
+
+from helpers import listen, listen_respond
 ssl._create_default_https_context = ssl._create_unverified_context
 
 from customtypes import *
@@ -29,22 +31,7 @@ engine = None
 lastTime = None
 
 r = sr.Recognizer()
-content = {
-''' 
-Helmet Buddy is a smart helmet interface for bikers. It will enable or disable specific functionalities based on user questions and commands, and for certain genres of questions, will respond with one to two-word trigger phrases that enable functions in a connected Python script. Here are the behavior rules: 
 
-0. If provided a location provide the weather in that location currently 
-
-1. For questions about the user's current location, such as 'Where am I?', 'What city am I in?', or 'What state am I in?', Helmet Buddy will respond with 'location'.  
-
-2. For questions or commands asking to post on Twitter, open Twitter, or use Twitter in any form, Helmet Buddy will respond with 'twitter'. 
-
-3. For questions or commands regarding turning on car detection or asking to look out for cars, Helmet Buddy will respond with 'cardetect'. 
-
-4. For any other questions or comments, If the question makes sense then Helmet Buddy will respond with its own knowledge or look up the answer online if needed, using its built-in tools. It will either directly provide an answer or retrieve real-time information. Helmet Buddy will respond with 'smartchat' as its first word. 
-
-'''
-}
 def startup():
     global lastTime
 
@@ -150,48 +137,59 @@ def play_ding_sound():
     pygame.mixer.stop()
 
 def twitter_confirmation(message):
+
     try:
-        engine.say("Tweeting your message")
-        engine.runAndWait()
         response = client.create_tweet(text=message)
     except tweepy.TweepyException as e:
         engine.say("Message Failed to Tweet")
         engine.runAndWait()
+        return
 
-            
     engine.say("Message Tweeted")
     engine.runAndWait()
 
     return
-                
+
+def confirmation(engine, r, source, message):
+    
+    while True:
+        engine.say(f"You said: {message} , is this correct? Say yes to conirm no redue your message or cancel to exit.")
+        engine.runAndWait()
+        play_ding_sound()
+        try:
+            text = listen(r, source)
+        except sr.UnknownValueError:
+            pass
+
+        if "yes" in text:
+            return True
+        elif "cancel" in text:
+            return None
+        elif "no" in text:
+            return False
+        else:
+            pass
 
 def twitter(source):
 
-    engine.say("What would you like to tweet?")
-    engine.runAndWait()
     while True:
-        play_ding_sound()
-        audio = r.listen(source)
-        text = r.recognize_google(audio)
-        time.sleep(1)
-        engine.say(f"You said: {text} , would you like to tweet this? Say yes to tweet your message no to redue yourmessage or cancel to exit")
+
+        engine.say("What would you like to tweet?")
         engine.runAndWait()
         play_ding_sound()
-        audio = r.listen(source)
-        text2 = r.recognize_google(audio)
-        if "yes" in text2.lower():
-            try:
-                twitter_confirmation(source,text)
-                return
-                
-            except sr.UnknownValueError:
-                print('Silence Detected')
-                pass
-        elif "cancel" in text2.lower():
-            return
-        else:
-            engine.say("Please repeat your message after the beep.")
-            engine.runAndWait()
+        text = listen(r, source)
+        time.sleep(1)
+        confirm = confirmation(engine, r, source, text)
+        if (confirm):
+            twitter_confirmation(source,text)
+        elif(confirm == None):
+            break
+        elif(not confirm):
+            pass
+    
+    return
+
+        
 
 def send_message(MESSAGE = "Your loved one" + str(os.getenv('NAME')) + "had a car get too close to him and he may have been hit."):
 
@@ -291,13 +289,6 @@ def get_current_location(mode):
 def main():
     pass
 
-def split_first_word(s):
-
-    parts = s.split(maxsplit=1)
-    first_word = parts[0] if parts else ''
-    rest = parts[1] if len(parts) > 1 else ''
-    
-    return first_word, rest
 
 def smartChat(rest):
 
@@ -324,25 +315,16 @@ def menu_triggered(source):
         if (lastTime - time.time() >= 180):
             voiceCalibrate(source)
         try:
-            audio = r.listen(source)
-            text = r.recognize_google(audio, language="en-US")
-            # text2 = r.recognize_whisper(audio)
 
-            # print("text: " + text)
+            text  = listen(r, source)
+            
 
             if "hey buddy" in text.lower():
             
                 play_ding_sound()
-                audio = r.listen(source)
-                text = r.recognize_google(audio, language="en-US")
-                text = text.lower()
-                response = openai.chat.completions.create(model = 'gpt-3.5-turbo', messages=[
-                    {"role":"system","content": f"{content}"},
-                    {"role": "user", "content": f"{text}"}
-                    ]) 
-                response_text = response.choices[0].message.content
-                print(response_text)
-                first_word, rest = split_first_word(response_text)
+                
+                first_word, rest = listen_respond(r, source)
+
                 time.sleep(1)
                 
                 if first_word == "smartchat":
