@@ -110,7 +110,7 @@ def init_buzzer():
         ding_sound = None
 
 def generate_frames():
-    
+
     while True:
         success, frame = camera.read()
         if not success:

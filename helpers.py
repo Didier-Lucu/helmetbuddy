@@ -1,4 +1,6 @@
+import time
 import openai
+import pygame
 import speech_recognition as sr
 
 content = {
@@ -18,6 +20,17 @@ Helmet Buddy is a smart helmet interface for bikers. It will enable or disable s
 '''
 }
 
+def play_ding_sound(ding_sound):
+
+    if ding_sound is None:
+        print("No sound loaded.")
+        return
+
+    ding_sound.play()
+    while pygame.mixer.get_busy() == True:
+        time.sleep(0.1) # Prevents high CPU usage
+    pygame.mixer.stop()
+
 def split_first_word(s):
 
     parts = s.split(maxsplit=1)
@@ -27,9 +40,13 @@ def split_first_word(s):
     return first_word, rest
 
 def listen(r, source):
+    
+    try:
+        audio = r.listen(source)
+        text = r.recognize_google(audio, language="en-US").lower()
 
-    audio = r.listen(source)
-    text = r.recognize_google(audio, language="en-US")
+    except Exception as e:
+        return e
 
     return text
 
@@ -40,6 +57,25 @@ def listen_respond(r, source):
 
     return response(text) # returns first_word , rest
 
+def confirmation(engine, r, source, message):
+    
+    while True:
+        engine.say(f"You said: {message} , is this correct? Say yes to conirm no redue your message or cancel to exit.")
+        engine.runAndWait()
+        play_ding_sound()
+        try:
+            text = listen(r, source)
+        except sr.UnknownValueError:
+            pass
+
+        if "yes" in text:
+            return True
+        elif "cancel" in text:
+            return None
+        elif "no" in text:
+            return False
+        else:
+            pass
 
 
 
