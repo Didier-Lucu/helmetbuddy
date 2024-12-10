@@ -18,7 +18,7 @@ import cv2
 import ssl
 
 from helpers import confirmation, listen, listen_respond, play_ding_sound
-ssl._create_default_https_context = ssl._create_unverified_context
+# ssl._create_default_https_context = ssl._create_unverified_context
 
 from customtypes import *
  
@@ -246,7 +246,7 @@ def get_current_location(mode):
                 gps_serial.close()
                 return
                 
-    except :
+    except Exception as e:
         print("GPS not connected")
         engine.say("No connection Running backup wifi location")
         engine.runAndWait()
@@ -260,11 +260,6 @@ def get_current_location(mode):
             return address
         engine.say("You are located near" + address)
         engine.runAndWait()
-        return
-	
-    finally:
-        gps_serial.close()
-        print("Program terminated by j")
         return
 
 def main():
@@ -335,7 +330,7 @@ def menu_triggered(source):
                     break
                 elif first_word == "objdetect":
                     pass
-        except sr.UnknownValueError or sr.WaitTimeoutError:
+        except sr.UnknownValueError or sr.WaitTimeoutError or  Exception:
             print("ERROR")
             continue
     

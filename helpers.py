@@ -45,15 +45,17 @@ def listen(r, source):
         audio = r.listen(source)
         text = r.recognize_google(audio, language="en-US").lower()
 
-    except Exception as e:
-        return e
+    except Exception:
+        raise
 
     return text
 
 
 def listen_respond(r, source):
-
-    text = listen(r, source)
+    try:
+        text = listen(r, source)
+    except Exception:
+        raise
 
     return response(text) # returns first_word , rest
 

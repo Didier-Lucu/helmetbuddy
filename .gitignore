@@ -6,6 +6,7 @@ last.pt
 mobilenet_ssd.caffemodel
 mobilenet_ssd.prototxt
 model
+whisper models
 old.py
 serverold.py
 yolov5
