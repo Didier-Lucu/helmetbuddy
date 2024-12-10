@@ -31,6 +31,8 @@ engine = None
 lastTime = None
 EMAIL_USER = None
 EMAIL_PASSWORD = None
+SERVER = None
+AUTH = None
 
 r = sr.Recognizer()
 
@@ -51,10 +53,12 @@ def startup():
 
 
 def init_messages():
-    global EMAIL_USER, EMAIL_PASSWORD
+    global EMAIL_USER, EMAIL_PASSWORD, SERVER, AUTH
 
     EMAIL_USER = os.getenv('EMAIL_USER')
     EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
+    AUTH = (EMAIL_USER, EMAIL_PASSWORD)
+    SERVER = smtplib.SMTP("smtp.gmail.com", 587)
 
 def init_voice_engine():
     global r
@@ -160,9 +164,10 @@ def twitter(source):
         play_ding_sound(ding_sound)
         text = listen(r, source)
         time.sleep(1)
-        confirm = confirmation(engine, r, source, text)
+        confirm = confirmation(engine, r, source, text, ding_sound)
         if (confirm):
-            twitter_confirmation(source,text)
+            twitter_confirmation(text)
+            break
         elif(confirm == None):
             break
         elif(not confirm):
@@ -178,10 +183,6 @@ def send_message(MESSAGE = "Your loved one" + str(os.getenv('NAME')) + "had a ca
     CARRIER = "verizon"
 
 
-
-    EMAIL = "helmetbuddy7@gmail.com"
-    PASSWORD = "tfdz xmzq tigr katv"
-
     CARRIERS = {
     "att": "@mms.att.net",
     "tmobile": "@tmomail.net",
@@ -189,14 +190,15 @@ def send_message(MESSAGE = "Your loved one" + str(os.getenv('NAME')) + "had a ca
     "sprint": "@messaging.sprintpcs.com"
     }
 
+
+    
     recipient = "5307151598@vtext.com"
-    auth = (EMAIL, PASSWORD)
+    
  
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(auth[0], auth[1])
- 
-    server.sendmail(auth[0], recipient, MESSAGE)
+    SERVER.starttls()
+    SERVER.login(AUTH[0], AUTH[1])
+    SERVER.sendmail(AUTH[0], recipient, MESSAGE)
+    SERVER.quit()
 
 def back_up_location():
 
@@ -288,8 +290,9 @@ def menu_triggered(source):
 
     while True:
 
-        if (lastTime - time.time() >= 180):
+        if (time.time() - lastTime >= 180):
             voiceCalibrate(source)
+            lastTime = time.time()
         try:
 
             text  = listen(r, source)
@@ -310,7 +313,7 @@ def menu_triggered(source):
                     get_current_location(mode = "location")
 
                 elif first_word == "twitter":
-                    twitter()
+                    twitter(source)
                     
                 elif first_word == "weather":
                     address = get_current_location(mode = "weather")

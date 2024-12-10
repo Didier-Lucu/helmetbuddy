@@ -59,16 +59,16 @@ def listen_respond(r, source):
 
     return response(text) # returns first_word , rest
 
-def confirmation(engine, r, source, message):
+def confirmation(engine, r, source, message, ding_sound):
     
     while True:
         engine.say(f"You said: {message} , is this correct? Say yes to conirm no redue your message or cancel to exit.")
         engine.runAndWait()
-        play_ding_sound()
+        play_ding_sound(ding_sound)
         try:
             text = listen(r, source)
         except sr.UnknownValueError:
-            pass
+            continue
 
         if "yes" in text:
             return True
@@ -83,10 +83,12 @@ def confirmation(engine, r, source, message):
 
 def response(text):
 
-    response = openai.chat.completions.create(model = 'gpt-3.5-turbo', messages=[
-                        {"role":"system","content": f"{content}"},
-                        {"role": "user", "content": f"{text}"}
-                        ]) 
+    response = openai.chat.completions.create(
+        model = 'gpt-3.5-turbo', messages=[
+        {"role":"system","content": f"{content}"},
+        {"role": "user", "content": f"{text}"}
+        ]
+    ) 
     
 
     first_word, rest = split_first_word(response.choices[0].message.content)
