@@ -17,7 +17,7 @@ from flask import Flask, Response
 import cv2
 import ssl
 
-from helpers import listen, listen_respond
+from helpers import confirmation, listen, listen_respond, play_ding_sound
 ssl._create_default_https_context = ssl._create_unverified_context
 
 from customtypes import *
@@ -29,6 +29,8 @@ ding_sound = None
 client = None
 engine = None
 lastTime = None
+EMAIL_USER = None
+EMAIL_PASSWORD = None
 
 r = sr.Recognizer()
 
@@ -39,12 +41,20 @@ def startup():
 
     load_dotenv()
 
+    init_messages()
     init_LLM()
     init_tts()
     init_twitter()
     init_voice_engine()
     init_buzzer()
     start_flask_thread()
+
+
+def init_messages():
+    global EMAIL_USER, EMAIL_PASSWORD
+
+    EMAIL_USER = os.getenv('EMAIL_USER')
+    EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
 
 def init_voice_engine():
     global r
@@ -100,6 +110,7 @@ def init_buzzer():
         ding_sound = None
 
 def generate_frames():
+    
     while True:
         success, frame = camera.read()
         if not success:
@@ -125,16 +136,6 @@ def start_flask_thread():
     flask_thread.daemon = True
     flask_thread.start()
 
-def play_ding_sound():
-
-    if ding_sound is None:
-        print("No sound loaded.")
-        return
-
-    ding_sound.play()
-    while pygame.mixer.get_busy() == True:
-        time.sleep(0.1) # Prevents high CPU usage
-    pygame.mixer.stop()
 
 def twitter_confirmation(message):
 
@@ -150,33 +151,13 @@ def twitter_confirmation(message):
 
     return
 
-def confirmation(engine, r, source, message):
-    
-    while True:
-        engine.say(f"You said: {message} , is this correct? Say yes to conirm no redue your message or cancel to exit.")
-        engine.runAndWait()
-        play_ding_sound()
-        try:
-            text = listen(r, source)
-        except sr.UnknownValueError:
-            pass
-
-        if "yes" in text:
-            return True
-        elif "cancel" in text:
-            return None
-        elif "no" in text:
-            return False
-        else:
-            pass
-
 def twitter(source):
 
     while True:
 
         engine.say("What would you like to tweet?")
-        engine.runAndWait()
-        play_ding_sound()
+        engine.runAndWait(),
+        play_ding_sound(ding_sound)
         text = listen(r, source)
         time.sleep(1)
         confirm = confirmation(engine, r, source, text)
@@ -321,7 +302,7 @@ def menu_triggered(source):
 
             if "hey buddy" in text.lower():
             
-                play_ding_sound()
+                play_ding_sound(ding_sound)
                 
                 first_word, rest = listen_respond(r, source)
 
